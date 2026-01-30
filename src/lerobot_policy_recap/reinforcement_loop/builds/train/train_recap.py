@@ -29,6 +29,8 @@ def main(cfg: RLTrainPipelineConfig):
     
     # Track time for throughput metrics
     start_time = time.perf_counter()
+
+    
     
     
     for step in range(rl.step+1, cfg.steps + 1):

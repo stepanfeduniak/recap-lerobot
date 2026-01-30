@@ -15,15 +15,39 @@ cd recap-lerobot
 pip install -e .
 ```
 
-## Usage
+# Training recap
+
+## Libero-Pro
+Evaluate on libero-pro.
+```bash
+pip install "libero @ git+https://github.com/stepanfeduniak/lerobot-libero-pro.git"
+```
+### Per Stage Run:
+Collect Dataset:
+```bash
+python lerobot_policy_recap/reinforcement_loop/builds/data_collection/record_interaction_dataset.py \
+  --dataset.repo_id=${HF_USER}/<dataset> \
+  --output_dir=./outputs/[RUN_NAME] \
+  --policy.repo_id=${HF_USER}/recap_pi \
+  --policy.path=lerobot/pi05_libero_finetuned_quantiles \
+  --env.type=libero \
+  --env.task=libero_10 \
+  --policy.dtype=bfloat16 \
+  --policy.device=cuda \
+  --eval.n_episodes=500 \
+  --eval.batch_size=10 \
+```    
+One Training Iteration:
 
 ```bash
-# Train with RECAP
-python -m lerobot_policy_recap.reinforcement_loop.builds.train.train_recap \
-    --policy.type recap_pi \
-    --policy.diffusion_repo_id lerobot/pi05_libero_finetuned
+python lerobot_policy_recap/reinforcement_loop/builds/train/train_recap.py \
+  --dataset.repo_id=${HF_USER}/<dataset> \
+  --output_dir=./outputs/[RUN_NAME] \
+  --policy.repo_id=${HF_USER}/recap_pi \
+  --policy.path=lerobot/pi05_libero_finetuned_quantiles \
+  --policy.dtype=bfloat16 \
+  --policy.device=cuda \
+  --critic_steps=5000 \
+  --actor_steps=5000 \
+  --batch_size=32
 ```
-
-## License
-
-Apache 2.0
