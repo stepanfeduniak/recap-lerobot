@@ -1,0 +1,18 @@
+[project]
+name = "lerobot_policy_recap"
+version = "0.1.0"
+description = "RECAP for pi0.5 for LeRobot"
+readme = "README.md"
+requires-python = ">= 3.11"
+dependencies = [
+    "lerobot",
+    "torch",
+    "accelerate",
+]
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lerobot_policy_recap"]
