@@ -63,7 +63,6 @@ class RLObjects:
         self._init_reward_model()
         # 6. Buffers (Lazy Initialization)
         self._offline_buffer = None
-        self._online_buffer = None
     def _init_dataset(self):
         # 1. Dataset & Dataloader
         if hasattr(self.cfg, "dataset") and self.cfg.dataset is not None:
@@ -116,7 +115,7 @@ class RLObjects:
     
     @property
     def offline_buffer(self):
-        """Lazy initialization of OfflineReplayBuffer or RAMOfflineBuffer. Only created when accessed."""
+        """Lazy initialization of OfflineReplayBuffer. Only created when accessed."""
         if self._offline_buffer is None:
             if self.dataset is None:
                 raise ValueError(
@@ -129,54 +128,14 @@ class RLObjects:
             if hasattr(self.cfg, "policy") and (hasattr(self.cfg.policy, "chunk_size") or hasattr(self.cfg.policy, "horizon")):
                 horizon = getattr(self.cfg.policy, "chunk_size", getattr(self.cfg.policy, "horizon", horizon))
             
-            # Check if we should use RAM buffer (for cached datasets)
-            use_ram_buffer = getattr(self.cfg, "load_ram_buffer", False)
-            
-            if use_ram_buffer:
-                from lerobot_policy_recap.reinforcement_loop.common.buffers.ram_offline_buffer import RAMOfflineBuffer
-                logging.info(f"Initializing RAMOfflineBuffer with horizon={horizon} (loading entire dataset to RAM)...")
-                self._offline_buffer = RAMOfflineBuffer(
-                    cfg=self.cfg,
-                    dataset=self.dataset,
-                    horizon=horizon
-                )
-            else:
-                from lerobot_policy_recap.reinforcement_loop.common.buffers.offline_buffer import OfflineReplayBuffer
-                logging.info(f"Initializing OfflineReplayBuffer with horizon={horizon}...")
-                self._offline_buffer = OfflineReplayBuffer(
-                    cfg=self.cfg,
-                    dataset=self.dataset,
-                    horizon=horizon
-                )
-        return self._offline_buffer
-    
-    @property
-    def online_buffer(self):
-        """Lazy initialization of OnlineReplayBuffer."""
-        if self._online_buffer is None:
-            if self.dataset is None:
-                raise ValueError("Cannot create online_buffer without a dataset for spec inference.")
-            
-            from lerobot_policy_recap.reinforcement_loop.common.buffers.online_buffer import OnlineReplayBuffer
-            
-            # Determine horizon (chunk size)
-            horizon = getattr(self.cfg, "horizon", 10)
-            if hasattr(self.cfg, "policy") and hasattr(self.cfg.policy, "chunk_size"):
-                horizon = self.cfg.policy.chunk_size
-            
-            # Determine capacity (e.g., 100k frames or 10x dataset size)
-            capacity = getattr(self.cfg, "online_capacity", 100000)
-            
-            logging.info(f"Initializing OnlineReplayBuffer: capacity={capacity}, horizon={horizon}")
-            
-            self._online_buffer = OnlineReplayBuffer(
+            from lerobot_policy_recap.reinforcement_loop.common.buffers.offline_buffer import OfflineReplayBuffer
+            logging.info(f"Initializing OfflineReplayBuffer with horizon={horizon}...")
+            self._offline_buffer = OfflineReplayBuffer(
                 cfg=self.cfg,
                 dataset=self.dataset,
-                horizon=horizon,
-                capacity=capacity,
-                device=self.device
+                horizon=horizon
             )
-        return self._online_buffer
+        return self._offline_buffer
     
     @property
     def accelerator(self) -> Accelerator:
