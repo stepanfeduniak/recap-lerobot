@@ -105,7 +105,8 @@ class RLObjects:
         # Env Processors
         if self.envs:
             self.env_preprocessor, self.env_postprocessor = make_env_pre_post_processors(
-                env_cfg=self.cfg.env
+                env_cfg=self.cfg.env,
+                policy_cfg=self.cfg.policy
             )
     def _init_reward_model(self):
         # Reward Model (Optional)

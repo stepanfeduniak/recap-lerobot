@@ -8,7 +8,7 @@ from lerobot_policy_recap.reinforcement_loop.common.encoders.gemma3_encoder impo
 from lerobot_policy_recap.policies.recap.configuration_recap_pi import RECAP_PI_Config
 from lerobot_policy_recap.policies.recap.modeling_recap_base import RECAPBasePolicy, OBS_LANGUAGE_TOKENS_POS, OBS_LANGUAGE_ATTENTION_MASK_POS
 
-from lerobot.policies.pi05.modeling_pi05 import make_att_2d_masks, ActionSelectKwargs
+from lerobot.policies.pi05.modeling_pi05 import make_att_2d_masks
 from lerobot.utils.constants import (
     ACTION,
     OBS_LANGUAGE_ATTENTION_MASK,
@@ -86,7 +86,7 @@ def sample_actions_cfg(
     noise=None,
     num_steps=None,
     cfg_weight=1.0,
-    **kwargs: Unpack[ActionSelectKwargs],
+    **kwargs,
 ) -> Tensor:
     """Do a full inference forward with Classifier Free Guidance.
     

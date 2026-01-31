@@ -5,7 +5,7 @@ description = "RECAP for pi0.5 for LeRobot"
 readme = "README.md"
 requires-python = ">= 3.10"
 dependencies = [
-    "lerobot",
+    "lerobot==0.4.3",
     "torch",
     "accelerate",
 ]

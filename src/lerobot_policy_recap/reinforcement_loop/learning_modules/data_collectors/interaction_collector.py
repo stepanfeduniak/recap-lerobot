@@ -9,7 +9,10 @@ from termcolor import colored
 
 from lerobot.envs.utils import preprocess_observation, add_envs_task
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
-from lerobot.datasets.pipeline_features import aggregate_pipeline_dataset_features, create_initial_features
+from lerobot.datasets.pipeline_features import create_initial_features
+from lerobot_policy_recap.reinforcement_loop.learning_modules.data_collectors.feature_patch.pipeline_features import (
+    aggregate_pipeline_dataset_features,
+)
 from lerobot.datasets.utils import combine_feature_dicts
 from lerobot.datasets.video_utils import VideoEncodingManager
 from lerobot_policy_recap.reinforcement_loop.common.utils.utils import drop_non_observation_keys, to_cpu
@@ -85,6 +88,7 @@ class InteractionDatasetRecorder:
                     use_videos=self.video_enabled,
                 ),
             )
+        print(colored(f"Dataset features: {dataset_features.keys()}", "yellow"))
         dataset_features[REWARD] = {"dtype": "float32", "names":"reward" ,"shape": (1,)}
         dataset_features[DONE] = {"dtype": "bool", "names":"done" ,"shape": (1,)}
         dataset_features["gen_new_chunk"] = {"dtype": "bool", "names":"gen_new_chunk" ,"shape": (1,)}
