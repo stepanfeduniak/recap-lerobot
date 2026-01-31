@@ -36,24 +36,3 @@ class SparseRewardModel(BaseRewardModel):
             rewards[success, -1] = 1.0
             
         return rewards
-
-
-@RewardConfig.register_subclass("pi06+")
-@dataclass
-class PI06PlusRewardConfig(RewardConfig):
-    pass
-
-
-class PI06PlusRewardModel(BaseRewardModel):
-    def get_rewards(self, reward_tensor, success=None, failed=None):
-        B, T, _ = reward_tensor.shape
-        device = reward_tensor.device
-        # Fill with constant penalty
-        rewards = torch.full((B, T), -1.0 / self.cfg.max_steps_per_episode, device=device)
-        
-        if success is not None:
-            if not isinstance(success, torch.Tensor):
-                success = torch.tensor(success, device=device)
-            rewards[success, -1] += 1.0
-            
-        return rewards

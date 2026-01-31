@@ -11,6 +11,11 @@ Using SigLip from the PI0.5 model as a feature extractor, projecting  and append
 ## Installation
 
 ```bash
+conda create -n recap_lerobot python=3.10 -y
+conda activate recap_lerobot
+```
+
+```bash
 cd recap-lerobot
 pip install -e .
 ```
@@ -25,8 +30,8 @@ pip install "libero @ git+https://github.com/stepanfeduniak/lerobot-libero-pro.g
 ### Per Stage Run:
 Collect Dataset:
 ```bash
-python lerobot_policy_recap/reinforcement_loop/builds/data_collection/record_interaction_dataset.py \
-  --dataset.repo_id=${HF_USER}/<dataset> \
+python -m lerobot_policy_recap.reinforcement_loop.builds.data_collection.record_interaction_dataset \
+  --dataset.repo_id=${HF_USER}/libero_10_iteration_1 \
   --output_dir=./outputs/[RUN_NAME] \
   --policy.repo_id=${HF_USER}/recap_pi \
   --policy.path=lerobot/pi05_libero_finetuned_quantiles \
@@ -35,12 +40,12 @@ python lerobot_policy_recap/reinforcement_loop/builds/data_collection/record_int
   --policy.dtype=bfloat16 \
   --policy.device=cuda \
   --eval.n_episodes=500 \
-  --eval.batch_size=10 \
+  --eval.batch_size=10 
 ```    
 One Training Iteration:
 
 ```bash
-python lerobot_policy_recap/reinforcement_loop/builds/train/train_recap.py \
+python -m lerobot_policy_recap.reinforcement_loop.builds.train.train_recap \
   --dataset.repo_id=${HF_USER}/<dataset> \
   --output_dir=./outputs/[RUN_NAME] \
   --policy.repo_id=${HF_USER}/recap_pi \

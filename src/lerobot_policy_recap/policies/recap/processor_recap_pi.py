@@ -26,9 +26,11 @@ from lerobot.processor import (
     ProcessorStep,
     ProcessorStepRegistry,
     RenameObservationsProcessorStep,
-    ReturnNormalizerProcessorStep,
     TokenizerProcessorStep,
     UnnormalizerProcessorStep,
+)
+from lerobot_policy_recap.processor import (
+    ReturnNormalizerProcessorStep,
 )
 from lerobot.processor.converters import policy_action_to_transition, transition_to_policy_action
 from lerobot.processor.core import EnvTransition, TransitionKey

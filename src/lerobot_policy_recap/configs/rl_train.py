@@ -40,7 +40,6 @@ class RLTrainPipelineConfig(HubMixin):
     env: envs.EnvConfig | None = None
     policy: PreTrainedConfig | None = None
     reward: RewardConfig | None = None
-    stac: STACConfig = field(default_factory=STACConfig)
     # Set `dir` to where you would like to save all of the run outputs. If you run another training session
     # with the same value for `dir` its contents will be overwritten unless you set `resume` to true.
     output_dir: Path | None = None

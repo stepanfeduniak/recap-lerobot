@@ -3,7 +3,7 @@ name = "lerobot_policy_recap"
 version = "0.1.0"
 description = "RECAP for pi0.5 for LeRobot"
 readme = "README.md"
-requires-python = ">= 3.11"
+requires-python = ">= 3.10"
 dependencies = [
     "lerobot",
     "torch",
