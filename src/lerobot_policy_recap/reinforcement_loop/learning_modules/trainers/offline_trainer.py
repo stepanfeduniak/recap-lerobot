@@ -24,34 +24,8 @@ class OfflineTrainer(BaseTrainer):
         
         logging.info(colored("OfflineTrainer atomic block ready.", "green"))
         
-        # Check for Recap policy and compute return-to-go
-        if "recap" in self.rl.cfg.policy.type:
-            discount = self.rl.cfg.policy.discount
-            logging.info(f"Recap policy detected. Computing return-to-go with discount {discount}...")
-            # Compute return-to-go in the buffer (updates buffer state)
-            self.offline_buffer.compute_return_to_go(discount)
-            
-            # Update return stats on the preprocessor's ReturnNormalizerProcessorStep
-            self._update_return_normalizer_stats()
-        
         # Setup accelerator FIRST to get correct device
         self._setup_accelerator_and_dataloader()
-    
-    def _update_return_normalizer_stats(self):
-        """Update the ReturnNormalizerProcessorStep with computed return stats."""
-        from lerobot_policy_recap.processor import ReturnNormalizerProcessorStep
-        
-        return_stats = getattr(self.offline_buffer, 'return_stats', None)
-        if return_stats is None:
-            logging.warning("No return_stats found on offline_buffer, skipping normalizer update.")
-            return
-        
-        # Find and update the ReturnNormalizerProcessorStep in the preprocessor
-        for step in self.rl.preprocessor.steps:
-            if isinstance(step, ReturnNormalizerProcessorStep):
-                print(f"Updating ReturnNormalizerProcessorStep with return_stats: {return_stats}")
-                step.update_stats(return_stats)
-                logging.info(f"Updated ReturnNormalizerProcessorStep with return_stats: {return_stats}")
     def _setup_accelerator_and_dataloader(self):
         """Setup accelerator first, then create dataloader with correct device for pin_memory."""
         self._setup_accelerator()
