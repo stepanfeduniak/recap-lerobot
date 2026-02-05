@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from lerobot.configs import parser
-from lerobot.configs.rl_train import RLTrainPipelineConfig
+from lerobot_policy_recap.configs.rl_train import RLTrainPipelineConfig
 from lerobot_policy_recap.reinforcement_loop.learning_modules.rl_objects import RLObjects
 from lerobot_policy_recap.reinforcement_loop.learning_modules.trainers.offline_trainer import OfflineTrainer
 from lerobot_policy_recap.reinforcement_loop.learning_modules.evaluators.evaluator import BatchedEvaluator

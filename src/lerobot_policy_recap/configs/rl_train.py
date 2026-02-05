@@ -84,6 +84,8 @@ class RLTrainPipelineConfig(HubMixin):
     #serl specific
     send_every: int = 10
     log_every: int = 10
+    tolerance_s: float = 1e-4
+
 
     # Buffer data:
     get_return_to_go:  bool = False

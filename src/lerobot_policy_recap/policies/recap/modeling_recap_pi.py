@@ -27,8 +27,10 @@ class RECAP_PI_Policy(RECAPBasePolicy):
     def __init__(
         self,
         config: RECAP_PI_Config | None = None,
+        **kwargs: Unpack[dict],
     ):
         super().__init__(config)
+        print(f"Kwargs received in RECAP_PI_Policy: {kwargs.keys()}")
         print("[RECAP_PI_Policy] Initializing RECAP PI policy")
         self.diffusion_policy.model.sample_actions_cfg = types.MethodType(
             sample_actions_cfg,

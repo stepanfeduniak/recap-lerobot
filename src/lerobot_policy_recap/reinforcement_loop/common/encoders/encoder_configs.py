@@ -34,7 +34,7 @@ class Gemma3EncoderConfig(BaseEncoderConfig):
     """
     # Granular freeze control
     freeze_siglip: bool = True
-    freeze_gemma: bool = True  
+    freeze_gemma: bool = False  
     freeze_projector: bool = False  # Projector should be trainable by default
     use_gradient_checkpointing: bool = False
     
@@ -54,7 +54,7 @@ class Gemma3EncoderConfig(BaseEncoderConfig):
     num_soft_prompt_tokens: int = 0
     
     # Optimization
-    use_flash_attention: bool = True
+    use_flash_attention: bool = False
 
 
 @dataclass
