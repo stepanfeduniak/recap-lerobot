@@ -22,7 +22,6 @@ from lerobot.utils.train_utils import (
     update_last_checkpoint,
     load_training_state,
 )
-from lerobot_policy_recap.reinforcement_loop.common.reward_models.reward_factory import make_reward_model
 from accelerate import Accelerator
 
 class RLObjects:
@@ -59,9 +58,6 @@ class RLObjects:
         # 4. Logger
         self.logger = make_logger(self.cfg)
         self.step=0
-        # 5. Reward Model (Optional)
-        self.reward_model = None
-        self._init_reward_model()
         # 6. Buffers (Lazy Initialization)
         self._offline_buffer = None
     def _init_dataset(self):
@@ -116,11 +112,6 @@ class RLObjects:
                 env_cfg=self.cfg.env,
                 policy_cfg=self.cfg.policy
             )
-    def _init_reward_model(self):
-        # Reward Model (Optional)
-        if hasattr(self.cfg, "reward") and self.cfg.reward is not None:
-            logging.info("Initializing Reward Model...")
-            self.reward_model = make_reward_model(cfg=self.cfg)
     
     @property
     def offline_buffer(self):

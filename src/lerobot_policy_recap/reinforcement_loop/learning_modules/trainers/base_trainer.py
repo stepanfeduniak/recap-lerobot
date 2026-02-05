@@ -28,7 +28,6 @@ class BaseTrainer(ABC):
             rl: RLObjects instance containing policy, buffers, config, etc.
         """
         self.rl = rl
-        self.reward_model = rl.reward_model
         self.last_losses: Dict[str, float] = {}
         self.observation_keys: list = []
         
@@ -127,7 +126,7 @@ class BaseTrainer(ABC):
     
     def _prepare_batch(self, raw_batch: dict) -> dict:
         """
-        Prepare batch for policy training: restructure, apply reward model, preprocess.
+        Prepare batch for policy training: restructure, apply reward discounting, preprocess.
         
         Raw batch from default collation has observation keys with shape [B, 2, C, H, W]
         where index 0 is current obs and index 1 is next obs. This function splits them
@@ -151,8 +150,18 @@ class BaseTrainer(ABC):
         # Action chunks [B, H, D]
         batch["action"] = raw_batch["action"]
         
-        # Rewards [B, H] - apply reward model
-        batch["next.reward"] = self.reward_model.get_chunked_rewards(raw_batch["next.reward"])
+        # Rewards [B, H] - apply reward discounting directly
+        rewards = raw_batch["next.reward"].squeeze(-1).to(torch.float32)
+        device = rewards.device
+        B, T = rewards.shape
+        discount_factor = self.rl.cfg.policy.discount
+        # Create discount vector (T,) on the correct device
+        discounts = torch.pow(
+            discount_factor,
+            torch.arange(T, device=device, dtype=torch.float32)
+        )
+        # Element-wise multiply (B, T) * (T,) and sum across T (dim=1)
+        batch["next.reward"] = torch.sum(rewards * discounts, dim=1)
         
         # Done flags - mark as done if any timestep in the chunk is done
         done_data = raw_batch["next.done"]

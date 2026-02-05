@@ -29,7 +29,6 @@ from lerobot.configs.policies import PreTrainedConfig
 from lerobot.optim import OptimizerConfig
 from lerobot.optim.schedulers import LRSchedulerConfig
 from lerobot.utils.hub import HubMixin
-from lerobot_policy_recap.reinforcement_loop.common.reward_models.base_reward import RewardConfig
 
 TRAIN_CONFIG_NAME = "train_config.json"
 
@@ -39,7 +38,6 @@ class RLTrainPipelineConfig(HubMixin):
     dataset: DatasetConfig | None = None
     env: envs.EnvConfig | None = None
     policy: PreTrainedConfig | None = None
-    reward: RewardConfig | None = None
     # Set `dir` to where you would like to save all of the run outputs. If you run another training session
     # with the same value for `dir` its contents will be overwritten unless you set `resume` to true.
     output_dir: Path | None = None

@@ -9,7 +9,6 @@ import torch
 
 from lerobot.configs import parser
 from lerobot.configs.rl_train import RLTrainPipelineConfig
-from lerobot_policy_recap.reinforcement_loop.common.reward_models.reward_factory import make_reward_model
 
 from lerobot_policy_recap.reinforcement_loop.learning_modules.rl_objects import RLObjects
 from lerobot_policy_recap.reinforcement_loop.learning_modules.evaluators.evaluator import BatchedEvaluator
