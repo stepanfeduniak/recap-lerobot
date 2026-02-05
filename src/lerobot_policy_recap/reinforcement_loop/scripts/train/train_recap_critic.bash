@@ -4,7 +4,6 @@ python -m lerobot_policy_recap.reinforcement_loop.builds.train.train_recap \
     --dataset.repo_id=/home/ubuntu/lerobot_manufex/datasets/pi05_quantiles_liberolong1_STAC/interaction_ds_20260122_212549 \
     --policy.type=recap_pi \
     --policy.diffusion_repo_id=lerobot/pi05_libero_finetuned_quantiles \
-    --reward.type=sparse \
     --batch_size=32 \
     --eval.batch_size=1 \
     --eval.n_episodes=1 \
