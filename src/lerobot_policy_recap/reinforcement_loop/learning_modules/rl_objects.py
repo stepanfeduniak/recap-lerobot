@@ -97,6 +97,7 @@ class RLObjects:
             self.preprocessor, self.postprocessor = make_recap_pre_post_processors(
                 config=self.cfg.policy,
                 preprocessor_overrides={"device_processor": {"device": str(self.device)}},
+                dataset_stats=processor_kwargs.get("dataset_stats"),
             )
         else:
             self.preprocessor, self.postprocessor = make_pre_post_processors(

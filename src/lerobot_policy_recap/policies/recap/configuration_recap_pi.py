@@ -82,8 +82,8 @@ class RECAP_PI_Config(PreTrainedConfig):
     critic_warmup_steps: int = 1000 # Unused
 
     # Distributional V-Critic parameters
-    v_min: float = -5.0
-    v_max: float = 5.0
+    v_min: float = -1.0
+    v_max: float = 0.0
     num_atoms: int = 101
 
     # Action chunking parameters

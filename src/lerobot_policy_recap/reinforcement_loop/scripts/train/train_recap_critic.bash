@@ -1,7 +1,7 @@
 python -m lerobot_policy_recap.reinforcement_loop.builds.train.train_recap \
     --output_dir=/home/ubuntu/lerobot_manufex/outputs/recap \
     --policy.push_to_hub=false \
-    --dataset.repo_id=/home/ubuntu/lerobot_manufex/datasets/pi05_quantiles_liberolong1_STAC/interaction_ds_20260122_212549 \
+    --dataset.repo_id=/home/ubuntu/lerobot_manufex/datasets/pi05_quantiles_liberolong_sparse_rewards_fast\
     --policy.type=recap_pi \
     --policy.diffusion_repo_id=lerobot/pi05_libero_finetuned_quantiles \
     --batch_size=32 \

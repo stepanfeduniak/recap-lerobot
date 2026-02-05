@@ -37,54 +37,56 @@ from lerobot.processor.pipeline import ProcessorStep, ProcessorStepRegistry
 @ProcessorStepRegistry.register(name="return_normalizer_processor")
 class ReturnNormalizerProcessorStep(ProcessorStep):
     """
-    Normalizes return_to_go and next.reward using reward statistics scaled by horizon.
+    Normalizes return_to_go and next.reward using return statistics (max_abs).
     
-    Instead of normalizing by return statistics directly, this normalizer:
-    1. Uses reward statistics (mean/std) as the base
-    2. Scales by the horizon term 1/(1-discount) to convert reward scale to return scale
-    
-    This ensures proper normalization where:
-    - Rewards are normalized as: (reward - reward_mean) / reward_std
-    - Returns are normalized as: (return - reward_mean * horizon) / (reward_std * horizon)
-      which simplifies to: (return / horizon - reward_mean) / reward_std
+    Both return_to_go and rewards are normalized using the SAME return statistics,
+    meaning rewards will be scaled consistently with returns.
     
     The return_to_go is expected to be in complementary_data to avoid being dropped
     by other processor steps.
     
     Attributes:
-        reward_stats: Dictionary with 'mean' and 'std' keys for reward normalization.
-        discount: Discount factor for computing horizon = 1/(1-discount).
+        return_stats: Dictionary containing "max", "min" or "max_abs" keys for return normalization.
         eps: Small epsilon for numerical stability.
     """
     
-    reward_stats: dict[str, float] | None = None
-    discount: float = 0.99
+    return_stats: dict[str, float] | None = None
     eps: float = 1e-8
     device: torch.device | str | None = None
     dtype: torch.dtype | None = None
     
     # Internal tensor stats
     _tensor_stats: dict[str, Tensor] = field(default_factory=dict, init=False, repr=False)
-    _horizon: float = field(default=100.0, init=False, repr=False)
     
     def __post_init__(self):
         """Convert stats to tensors after initialization."""
         if self.dtype is None:
             self.dtype = torch.float32
-        # Compute horizon from discount: H = 1/(1-gamma)
-        self._horizon = 1.0 / (1.0 - self.discount + self.eps)
         self._update_tensor_stats()
     
     def _update_tensor_stats(self):
-        """Convert reward_stats to tensors on the correct device."""
-        if self.reward_stats is None:
+        """Convert return_stats to tensors on the correct device."""
+        if self.return_stats is None:
             self._tensor_stats = {}
             return
         
+        # Determine max_abs from available stats
+        # Priority: max_abs > max/min > mean/std (fallback, though mean/std shouldn't be used for this logic)
+        max_abs_val = 1.0
+        
+        if "max_abs" in self.return_stats:
+            max_abs_val = self.return_stats["max_abs"]
+        elif "max" in self.return_stats and "min" in self.return_stats:
+            max_val = abs(self.return_stats["max"])
+            min_val = abs(self.return_stats["min"])
+            max_abs_val = max(max_val, min_val)
+        
+        # Avoid division by zero if max_abs is 0 (unlikely but possible)
+        if max_abs_val < self.eps:
+            max_abs_val = 1.0
+
         self._tensor_stats = {
-            "mean": torch.tensor(self.reward_stats["mean"], device=self.device, dtype=self.dtype),
-            "std": torch.tensor(self.reward_stats["std"], device=self.device, dtype=self.dtype),
-            "horizon": torch.tensor(self._horizon, device=self.device, dtype=self.dtype),
+            "max_abs": torch.tensor(max_abs_val, device=self.device, dtype=self.dtype),
         }
     
     def to(self, device: torch.device | str | None = None, dtype: torch.dtype | None = None) -> "ReturnNormalizerProcessorStep":
@@ -101,77 +103,42 @@ class ReturnNormalizerProcessorStep(ProcessorStep):
         if not self._tensor_stats:
             return {}
         return {
-            "reward.mean": self._tensor_stats["mean"].cpu(),
-            "reward.std": self._tensor_stats["std"].cpu(),
-            "horizon": self._tensor_stats["horizon"].cpu(),
+            "return.max_abs": self._tensor_stats["max_abs"].cpu(),
         }
     
     def load_state_dict(self, state: dict[str, Tensor]) -> None:
         """Load state dictionary."""
-        if "reward.mean" in state and "reward.std" in state:
-            self.reward_stats = {
-                "mean": state["reward.mean"].item(),
-                "std": state["reward.std"].item(),
+        if "return.max_abs" in state:
+            self.return_stats = {
+                "max_abs": state["return.max_abs"].item(),
             }
-            if "horizon" in state:
-                self._horizon = state["horizon"].item()
             self._update_tensor_stats()
     
     def get_config(self) -> dict[str, Any]:
         """Return serializable configuration."""
         return {
-            "reward_stats": self.reward_stats,
-            "discount": self.discount,
+            "return_stats": self.return_stats,
             "eps": self.eps,
         }
     
-    def update_stats(self, reward_stats: dict[str, float]) -> None:
-        """Update reward statistics."""
-        self.reward_stats = reward_stats
+    def update_stats(self, return_stats: dict[str, float]) -> None:
+        """Update return statistics."""
+        self.return_stats = return_stats
         self._update_tensor_stats()
     
-    def _normalize_reward(self, value: Tensor) -> Tensor:
-        """Apply reward normalization: (reward - mean) / std."""
+    def _normalize(self, value: Tensor) -> Tensor:
+        """Apply max_abs normalization: value / max_abs."""
         if not self._tensor_stats:
             return value
         
-        mean = self._tensor_stats["mean"]
-        std = self._tensor_stats["std"]
+        max_abs = self._tensor_stats["max_abs"]
         
         # Ensure stats are on the same device as input
-        if mean.device != value.device:
+        if max_abs.device != value.device:
             self.to(device=value.device, dtype=value.dtype)
-            mean = self._tensor_stats["mean"]
-            std = self._tensor_stats["std"]
+            max_abs = self._tensor_stats["max_abs"]
         
-        return (value - mean) / (std + self.eps)
-    
-    def _normalize_return(self, value: Tensor) -> Tensor:
-        """
-        Apply return normalization using reward stats and horizon.
-        
-        Formula: (return / horizon - reward_mean) / reward_std
-        This is equivalent to dividing return by horizon first, then normalizing
-        using reward statistics.
-        """
-        if not self._tensor_stats:
-            return value
-        
-        mean = self._tensor_stats["mean"]
-        std = self._tensor_stats["std"]
-        horizon = self._tensor_stats["horizon"]
-        
-        # Ensure stats are on the same device as input
-        if mean.device != value.device:
-            self.to(device=value.device, dtype=value.dtype)
-            mean = self._tensor_stats["mean"]
-            std = self._tensor_stats["std"]
-            horizon = self._tensor_stats["horizon"]
-        
-        # Divide by horizon first to convert return scale to reward scale
-        scaled_return = value / horizon
-        # Then normalize using reward statistics
-        return (scaled_return - mean) / (std + self.eps)
+        return value / (max_abs + self.eps)
     
     def __call__(self, transition: EnvTransition) -> EnvTransition:
         """
@@ -185,19 +152,20 @@ class ReturnNormalizerProcessorStep(ProcessorStep):
         if not self._tensor_stats:
             return new_transition
         
-        # Normalize return_to_go from complementary_data using horizon-scaled normalization
+        # Normalize return_to_go from complementary_data
         comp_data = new_transition.get(TransitionKey.COMPLEMENTARY_DATA)
         if comp_data is not None and "return_to_go" in comp_data:
             rtg = comp_data["return_to_go"]
             if rtg is not None:
                 rtg_tensor = torch.as_tensor(rtg, dtype=self.dtype)
-                comp_data["return_to_go"] = self._normalize_return(rtg_tensor)
+                comp_data["return_to_go"] = self._normalize(rtg_tensor)
         
-        # Normalize reward at top level using reward normalization
+        # Normalize reward at top level (next.reward is typically stored as "reward" key
+        # after batch preparation, but we check both patterns)
         reward = new_transition.get(TransitionKey.REWARD)
         if reward is not None:
             reward_tensor = torch.as_tensor(reward, dtype=self.dtype)
-            new_transition[TransitionKey.REWARD] = self._normalize_reward(reward_tensor)
+            new_transition[TransitionKey.REWARD] = self._normalize(reward_tensor)
         
         return new_transition
 
@@ -214,37 +182,41 @@ class ReturnUnnormalizerProcessorStep(ProcessorStep):
     """
     Unnormalizes return_to_go and rewards back to original scale.
     
-    Inverse of ReturnNormalizerProcessorStep.
-    
-    For rewards: reward = normalized_reward * reward_std + reward_mean
-    For returns: return = (normalized_return * reward_std + reward_mean) * horizon
+    Inverse of ReturnNormalizerProcessorStep: value * max_abs.
     """
     
-    reward_stats: dict[str, float] | None = None
-    discount: float = 0.99
+    return_stats: dict[str, float] | None = None
     eps: float = 1e-8
     device: torch.device | str | None = None
     dtype: torch.dtype | None = None
     
     _tensor_stats: dict[str, Tensor] = field(default_factory=dict, init=False, repr=False)
-    _horizon: float = field(default=100.0, init=False, repr=False)
     
     def __post_init__(self):
         if self.dtype is None:
             self.dtype = torch.float32
-        # Compute horizon from discount: H = 1/(1-gamma)
-        self._horizon = 1.0 / (1.0 - self.discount + self.eps)
         self._update_tensor_stats()
     
     def _update_tensor_stats(self):
-        if self.reward_stats is None:
+        if self.return_stats is None:
             self._tensor_stats = {}
             return
         
+        # Determine max_abs from available stats
+        max_abs_val = 1.0
+        
+        if "max_abs" in self.return_stats:
+            max_abs_val = self.return_stats["max_abs"]
+        elif "max" in self.return_stats and "min" in self.return_stats:
+            max_val = abs(self.return_stats["max"])
+            min_val = abs(self.return_stats["min"])
+            max_abs_val = max(max_val, min_val)
+            
+        if max_abs_val < self.eps:
+            max_abs_val = 1.0
+        
         self._tensor_stats = {
-            "mean": torch.tensor(self.reward_stats["mean"], device=self.device, dtype=self.dtype),
-            "std": torch.tensor(self.reward_stats["std"], device=self.device, dtype=self.dtype),
-            "horizon": torch.tensor(self._horizon, device=self.device, dtype=self.dtype),
+            "max_abs": torch.tensor(max_abs_val, device=self.device, dtype=self.dtype),
         }
     
     def to(self, device: torch.device | str | None = None, dtype: torch.dtype | None = None) -> "ReturnUnnormalizerProcessorStep":
@@ -259,71 +231,38 @@ class ReturnUnnormalizerProcessorStep(ProcessorStep):
         if not self._tensor_stats:
             return {}
         return {
-            "reward.mean": self._tensor_stats["mean"].cpu(),
-            "reward.std": self._tensor_stats["std"].cpu(),
-            "horizon": self._tensor_stats["horizon"].cpu(),
+            "return.max_abs": self._tensor_stats["max_abs"].cpu(),
         }
     
     def load_state_dict(self, state: dict[str, Tensor]) -> None:
-        if "reward.mean" in state and "reward.std" in state:
-            self.reward_stats = {
-                "mean": state["reward.mean"].item(),
-                "std": state["reward.std"].item(),
+        if "return.max_abs" in state:
+            self.return_stats = {
+                "max_abs": state["return.max_abs"].item(),
             }
-            if "horizon" in state:
-                self._horizon = state["horizon"].item()
             self._update_tensor_stats()
     
     def get_config(self) -> dict[str, Any]:
         return {
-            "reward_stats": self.reward_stats,
-            "discount": self.discount,
+            "return_stats": self.return_stats,
             "eps": self.eps,
         }
     
-    def update_stats(self, reward_stats: dict[str, float]) -> None:
-        self.reward_stats = reward_stats
+    def update_stats(self, return_stats: dict[str, float]) -> None:
+        self.return_stats = return_stats
         self._update_tensor_stats()
     
-    def _unnormalize_reward(self, value: Tensor) -> Tensor:
-        """Unnormalize reward: reward = normalized * std + mean."""
+    def _unnormalize(self, value: Tensor) -> Tensor:
+        """Apply max_abs unnormalization: value * max_abs."""
         if not self._tensor_stats:
             return value
         
-        mean = self._tensor_stats["mean"]
-        std = self._tensor_stats["std"]
+        max_abs = self._tensor_stats["max_abs"]
         
-        if mean.device != value.device:
+        if max_abs.device != value.device:
             self.to(device=value.device, dtype=value.dtype)
-            mean = self._tensor_stats["mean"]
-            std = self._tensor_stats["std"]
+            max_abs = self._tensor_stats["max_abs"]
         
-        return value * std + mean
-    
-    def _unnormalize_return(self, value: Tensor) -> Tensor:
-        """
-        Unnormalize return using reward stats and horizon.
-        
-        Formula: return = (normalized_return * reward_std + reward_mean) * horizon
-        This is the inverse of: normalized = (return / horizon - mean) / std
-        """
-        if not self._tensor_stats:
-            return value
-        
-        mean = self._tensor_stats["mean"]
-        std = self._tensor_stats["std"]
-        horizon = self._tensor_stats["horizon"]
-        
-        if mean.device != value.device:
-            self.to(device=value.device, dtype=value.dtype)
-            mean = self._tensor_stats["mean"]
-            std = self._tensor_stats["std"]
-            horizon = self._tensor_stats["horizon"]
-        
-        # First unnormalize using reward statistics
-        unnorm_scaled = value * std + mean
-        # Then multiply by horizon to convert back to return scale
-        return unnorm_scaled * horizon
+        return value * max_abs
     
     def __call__(self, transition: EnvTransition) -> EnvTransition:
         new_transition = transition.copy()
@@ -331,19 +270,19 @@ class ReturnUnnormalizerProcessorStep(ProcessorStep):
         if not self._tensor_stats:
             return new_transition
         
-        # Unnormalize return_to_go from complementary_data using horizon scaling
+        # Unnormalize return_to_go from complementary_data
         comp_data = new_transition.get(TransitionKey.COMPLEMENTARY_DATA)
         if comp_data is not None and "return_to_go" in comp_data:
             rtg = comp_data["return_to_go"]
             if rtg is not None:
                 rtg_tensor = torch.as_tensor(rtg, dtype=self.dtype)
-                comp_data["return_to_go"] = self._unnormalize_return(rtg_tensor)
+                comp_data["return_to_go"] = self._unnormalize(rtg_tensor)
         
-        # Unnormalize reward using reward statistics
+        # Unnormalize reward
         reward = new_transition.get(TransitionKey.REWARD)
         if reward is not None:
             reward_tensor = torch.as_tensor(reward, dtype=self.dtype)
-            new_transition[TransitionKey.REWARD] = self._unnormalize_reward(reward_tensor)
+            new_transition[TransitionKey.REWARD] = self._unnormalize(reward_tensor)
         
         return new_transition
 

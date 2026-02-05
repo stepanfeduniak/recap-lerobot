@@ -210,6 +210,8 @@ def get_inner_config(config: Any) -> Optional[Any]:
 def make_recap_pre_post_processors(
     config: Any,
     preprocessor_overrides: dict[str, dict[str, torch.Tensor]] | None = None,
+    return_stats: dict[str, float] | None = None,
+    dataset_stats: dict[str, dict[str, torch.Tensor]] | None = None,
 ) -> tuple[
     PolicyProcessorPipeline[dict[str, Any], dict[str, Any]],
     PolicyProcessorPipeline[PolicyAction, PolicyAction],
@@ -326,6 +328,20 @@ def make_recap_pre_post_processors(
     print(f"[RECAP Processor] Inserted {len(recap_tokenizer_steps)} RECAP tokenizer steps after index {base_tokenizer_idx}")
     
     # 5. Find DeviceProcessorStep and insert ReturnNormalizerProcessorStep before it
+    # Compute return stats if not provided
+    if return_stats is None and dataset_stats is not None:
+        if "return_to_go" in dataset_stats:
+            stats = dataset_stats["return_to_go"]
+            # Use max_abs if available, else compute from min/max
+            if "max_abs" in stats:
+                max_abs = stats["max_abs"].item()
+            elif "max" in stats and "min" in stats:
+                max_abs = max(abs(stats["max"].item()), abs(stats["min"].item()))
+            else:
+                max_abs = 1.0 # Default fallback
+            return_stats = {"max_abs": max_abs}
+            print(f"[RECAP Processor] Computed return_stats from dataset: {return_stats}")
+
     device_step_idx = None
     for i, step in enumerate(new_steps):
         if isinstance(step, DeviceProcessorStep):
@@ -333,11 +349,11 @@ def make_recap_pre_post_processors(
             break
     
     if device_step_idx is not None:
-        new_steps.insert(device_step_idx, ReturnNormalizerProcessorStep())
+        new_steps.insert(device_step_idx, ReturnNormalizerProcessorStep(return_stats=return_stats))
         print(f"[RECAP Processor] Inserted ReturnNormalizerProcessorStep before DeviceProcessorStep at index {device_step_idx}")
     else:
         # If no device step found, append at the end
-        new_steps.append(ReturnNormalizerProcessorStep())
+        new_steps.append(ReturnNormalizerProcessorStep(return_stats=return_stats))
         print("[RECAP Processor] No DeviceProcessorStep found, appended ReturnNormalizerProcessorStep at end")
     
     # 6. Rebuild preprocessor with new steps
