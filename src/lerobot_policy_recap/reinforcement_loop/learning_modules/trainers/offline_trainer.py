@@ -39,7 +39,7 @@ class OfflineTrainer(BaseTrainer):
     
     def _update_return_normalizer_stats(self):
         """Update the ReturnNormalizerProcessorStep with computed return stats."""
-        from lerobot.processor import ReturnNormalizerProcessorStep
+        from lerobot_policy_recap.processor import ReturnNormalizerProcessorStep
         
         return_stats = getattr(self.offline_buffer, 'return_stats', None)
         if return_stats is None:

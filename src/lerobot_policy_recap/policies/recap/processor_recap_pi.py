@@ -210,7 +210,6 @@ def get_inner_config(config: Any) -> Optional[Any]:
 def make_recap_pre_post_processors(
     config: Any,
     preprocessor_overrides: dict[str, dict[str, torch.Tensor]] | None = None,
-    return_stats: dict[str, float] | None = None,
 ) -> tuple[
     PolicyProcessorPipeline[dict[str, Any], dict[str, Any]],
     PolicyProcessorPipeline[PolicyAction, PolicyAction],
@@ -230,7 +229,6 @@ def make_recap_pre_post_processors(
         config: The configuration object for the RECAP policy,
             containing diffusion_repo_id for the underlying policy.
         preprocessor_overrides: Optional overrides for processor steps.
-        return_stats: Optional statistics for return/reward normalization.
 
     Returns:
         A tuple containing the configured pre-processor and post-processor pipelines.
@@ -335,11 +333,11 @@ def make_recap_pre_post_processors(
             break
     
     if device_step_idx is not None:
-        new_steps.insert(device_step_idx, ReturnNormalizerProcessorStep(return_stats=return_stats))
+        new_steps.insert(device_step_idx, ReturnNormalizerProcessorStep())
         print(f"[RECAP Processor] Inserted ReturnNormalizerProcessorStep before DeviceProcessorStep at index {device_step_idx}")
     else:
         # If no device step found, append at the end
-        new_steps.append(ReturnNormalizerProcessorStep(return_stats=return_stats))
+        new_steps.append(ReturnNormalizerProcessorStep())
         print("[RECAP Processor] No DeviceProcessorStep found, appended ReturnNormalizerProcessorStep at end")
     
     # 6. Rebuild preprocessor with new steps
@@ -353,3 +351,7 @@ def make_recap_pre_post_processors(
         print(f"  [{i}] {type(step).__name__}")
     
     return preprocessor, postprocessor
+
+
+# Alias for factory lookup (policy type is "recap_pi")
+make_recap_pi_pre_post_processors = make_recap_pre_post_processors

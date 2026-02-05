@@ -25,7 +25,7 @@ class SparseRewardConfig(RewardConfig):
 
 class SparseRewardModel(BaseRewardModel):
     def get_rewards(self, reward_tensor, success=None, failed=None):
-        B, T, _ = reward_tensor.shape
+        B, T = reward_tensor.shape
         device = reward_tensor.device
         rewards = torch.zeros((B, T), device=device, dtype=torch.float32)
         

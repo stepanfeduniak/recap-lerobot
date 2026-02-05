@@ -22,7 +22,6 @@ def main(cfg: RLTrainPipelineConfig):
     # 2. Assemble the Atomic Blocks
     trainer = OfflineTrainer(rl)
     evaluator = BatchedEvaluator(rl)
-    data_collector = InteractionDatasetRecorder(rl)
 
     # 3. Training Loop
     logging.info(f"Starting Training: {cfg.steps} steps total.")

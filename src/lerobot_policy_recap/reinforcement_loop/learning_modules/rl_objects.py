@@ -15,6 +15,7 @@ from lerobot.datasets.utils import cycle
 from lerobot.policies.factory import make_policy, make_pre_post_processors
 from lerobot.envs.factory import make_env, make_env_pre_post_processors
 from lerobot_policy_recap.reinforcement_loop.common.logger import make_logger
+from lerobot_policy_recap.policies.recap.processor_recap_pi import make_recap_pre_post_processors
 from lerobot.utils.train_utils import (
     get_step_checkpoint_dir,
     save_checkpoint,
@@ -95,12 +96,19 @@ class RLObjects:
         if self.dataset and (not self.cfg.resume or not self.cfg.policy.pretrained_path):
             processor_kwargs["dataset_stats"] = self.dataset.meta.stats
 
-        self.preprocessor, self.postprocessor = make_pre_post_processors(
-            policy_cfg=self.cfg.policy,
-            pretrained_path=self.cfg.policy.pretrained_path,
-            preprocessor_overrides={"device_processor": {"device": str(self.device)}},
-            **processor_kwargs
-        )
+        # Check if this is a RECAP policy - use custom processor
+        if getattr(self.cfg.policy, "type", None) == "recap_pi":
+            self.preprocessor, self.postprocessor = make_recap_pre_post_processors(
+                config=self.cfg.policy,
+                preprocessor_overrides={"device_processor": {"device": str(self.device)}},
+            )
+        else:
+            self.preprocessor, self.postprocessor = make_pre_post_processors(
+                policy_cfg=self.cfg.policy,
+                pretrained_path=self.cfg.policy.pretrained_path,
+                preprocessor_overrides={"device_processor": {"device": str(self.device)}},
+                **processor_kwargs
+            )
     def _init_env_processors(self):
         # Env Processors
         if self.envs:
