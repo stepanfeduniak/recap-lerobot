@@ -158,6 +158,9 @@ class BatchedEvaluator:
         
         return final_metrics
     def benchmark(self):
+        if self.rl.cfg.eval.n_episodes <= 0 or not self.rl.cfg.eval.enable or self.rl.env is None:
+            logging.info(colored("Evaluation skipped as per configuration.", "yellow"))
+            return {}
         """Main entry point: Runs evaluation on all tasks."""
         logging.info(colored("Starting LEGO Benchmark...", "cyan"))
         self.rl.policy.eval()

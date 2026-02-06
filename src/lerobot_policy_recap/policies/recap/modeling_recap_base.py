@@ -265,7 +265,7 @@ class RECAPBasePolicy(PreTrainedPolicy, ABC):
         if "improvement_indicator" in batch:
             improvement_indicator = batch["improvement_indicator"]
         else:
-            improvement_indicator = self.compute_improvement_indicator(batch)
+            improvement_indicator, _ = self.compute_improvement_indicator(batch)
  
         observations = {k: v for k, v in batch.items() if k.startswith(OBS_PREFIX)}
 
@@ -357,12 +357,12 @@ class RECAPBasePolicy(PreTrainedPolicy, ABC):
         v_t = self.v_critic_ensemble.get_expectation(logits_t).mean(0)
         v_tn = self.v_critic_ensemble.get_expectation(logits_tn).mean(0)
         
-        advantages = self.config.discount * v_tn - v_t + rewards
+        advantages = self.config.discount**self.config.horizon * v_tn - v_t + rewards
         return advantages
 
     def compute_improvement_indicator(self, batch):
         advantages = self.compute_advantages(batch)
-        return advantages > self.config.indicator_threshold
+        return advantages > self.config.indicator_threshold, advantages
     
     def training_step(self, batch: dict, accelerator: Accelerator) -> dict:
         # 1. Update critic

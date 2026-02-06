@@ -30,44 +30,17 @@ from lerobot.optim import OptimizerConfig
 from lerobot.optim.schedulers import LRSchedulerConfig
 from lerobot.utils.hub import HubMixin
 
-TRAIN_CONFIG_NAME = "train_config.json"
+from lerobot.configs.train import TrainPipelineConfig, TRAIN_CONFIG_NAME
 
 
 @dataclass
-class RLTrainPipelineConfig(HubMixin):
-    dataset: DatasetConfig | None = None
-    env: envs.EnvConfig | None = None
-    policy: PreTrainedConfig | None = None
-    # Set `dir` to where you would like to save all of the run outputs. If you run another training session
-    # with the same value for `dir` its contents will be overwritten unless you set `resume` to true.
-    output_dir: Path | None = None
-    job_name: str | None = None
-    seed: int = 42
-
-    # Number of workers for the dataloader.
-    num_workers: int = 24
-    batch_size: int = 128
-    steps: int = 100_000
+class RLTrainPipelineConfig(TrainPipelineConfig):
+    # NOTE: In RL, we don't always need an offline dataset
+    dataset: DatasetConfig | None = None  # type: ignore[assignment]
 
     # Number of episodes to run the actor for (if applicable).
     num_episodes: int = 1000
-    eval_freq: int = 2000
-    log_freq: int = 200
-    save_checkpoint: bool = True
     utd_ratio: float = 1 # Number of updates per environment step.
-    
-
-    # Checkpoint is saved every `save_freq` training iterations and after the last training step.
-    resume: bool = False
-    save_freq: int = 5_000
-    use_policy_training_preset: bool = True
-    optimizer: OptimizerConfig | None = None
-    scheduler: LRSchedulerConfig | None = None
-    eval: EvalConfig = field(default_factory=EvalConfig)
-    wandb: WandBConfig = field(default_factory=WandBConfig)
-    checkpoint_path: Path | None = field(init=False, default=None)
-    # Rename map for the observation to override the image and state keys
-    rename_map: dict[str, str] = field(default_factory=dict)
 
     # Replay Buffers and Action Chunking
     online_buffer_capacity: int | None = None
@@ -82,8 +55,6 @@ class RLTrainPipelineConfig(HubMixin):
     #serl specific
     send_every: int = 10
     log_every: int = 10
-    tolerance_s: float = 1e-4
-
 
     # Buffer data:
     get_return_to_go:  bool = False
@@ -97,24 +68,6 @@ class RLTrainPipelineConfig(HubMixin):
             cli_overrides = parser.get_cli_overrides("policy")
             self.policy = PreTrainedConfig.from_pretrained(policy_path, cli_overrides=cli_overrides)
             self.policy.pretrained_path = Path(policy_path)
-        # elif self.resume:
-        #     # The entire train config is already loaded, we just need to get the checkpoint dir
-        #     config_path = parser.parse_arg("config_path")
-        #     if not config_path:
-        #         raise ValueError(
-        #             f"A config_path is expected when resuming a run. Please specify path to {TRAIN_CONFIG_NAME}"
-        #         )
-
-        #     if not Path(config_path).resolve().exists():
-        #         raise NotADirectoryError(
-        #             f"{config_path=} is expected to be a local path. "
-        #             "Resuming from the hub is not supported for now."
-        #         )
-
-        #     policy_dir = Path(config_path).parent
-        #     if self.policy is not None:
-        #         self.policy.pretrained_path = policy_dir
-        #     self.checkpoint_path = policy_dir.parent
 
         if self.policy is None:
             raise ValueError(
@@ -134,9 +87,6 @@ class RLTrainPipelineConfig(HubMixin):
             train_dir = f"{now:%Y-%m-%d}/{now:%H-%M-%S}_{self.job_name}"
             self.output_dir = Path("outputs/train") / train_dir
 
-        # if isinstance(self.dataset.repo_id, list):
-        #     raise NotImplementedError("LeRobotMultiDataset is not currently implemented.")
-
         if not self.use_policy_training_preset and (self.optimizer is None or self.scheduler is None):
             raise ValueError("Optimizer and Scheduler must be set when the policy presets are not used.")
         elif self.use_policy_training_preset and not self.resume:
@@ -147,62 +97,5 @@ class RLTrainPipelineConfig(HubMixin):
             raise ValueError(
                 "'policy.repo_id' argument missing. Please specify it to push the model to the hub."
             )
-    
-    @classmethod
-    def __get_path_fields__(cls) -> list[str]:
-        """This enables the parser to load config from the policy using `--policy.path=local/dir`"""
-        return ["policy"]
-
-    def to_dict(self) -> dict[str, Any]:
-        return draccus.encode(self)  # type: ignore[no-any-return]  # because of the third-party library draccus uses Any as the return type
-
-    def _save_pretrained(self, save_directory: Path) -> None:
-        with open(save_directory / TRAIN_CONFIG_NAME, "w") as f, draccus.config_type("json"):
-            draccus.dump(self, f, indent=4)
-
-    @classmethod
-    def from_pretrained(
-        cls: builtins.type["TrainPipelineConfig"],
-        pretrained_name_or_path: str | Path,
-        *,
-        force_download: bool = False,
-        resume_download: bool | None = None,
-        proxies: dict[Any, Any] | None = None,
-        token: str | bool | None = None,
-        cache_dir: str | Path | None = None,
-        local_files_only: bool = False,
-        revision: str | None = None,
-        **kwargs: Any,
-    ) -> "TrainPipelineConfig":
-        model_id = str(pretrained_name_or_path)
-        config_file: str | None = None
-        if Path(model_id).is_dir():
-            if TRAIN_CONFIG_NAME in os.listdir(model_id):
-                config_file = os.path.join(model_id, TRAIN_CONFIG_NAME)
-            else:
-                print(f"{TRAIN_CONFIG_NAME} not found in {Path(model_id).resolve()}")
-        elif Path(model_id).is_file():
-            config_file = model_id
-        else:
-            try:
-                config_file = hf_hub_download(
-                    repo_id=model_id,
-                    filename=TRAIN_CONFIG_NAME,
-                    revision=revision,
-                    cache_dir=cache_dir,
-                    force_download=force_download,
-                    proxies=proxies,
-                    resume_download=resume_download,
-                    token=token,
-                    local_files_only=local_files_only,
-                )
-            except HfHubHTTPError as e:
-                raise FileNotFoundError(
-                    f"{TRAIN_CONFIG_NAME} not found on the HuggingFace Hub in {model_id}"
-                ) from e
-
-        cli_args = kwargs.pop("cli_args", [])
-        with draccus.config_type("json"):
-            return draccus.parse(cls, config_file, args=cli_args)
 
 

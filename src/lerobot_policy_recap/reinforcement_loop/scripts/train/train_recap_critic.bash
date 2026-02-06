@@ -5,10 +5,8 @@ python -m lerobot_policy_recap.reinforcement_loop.builds.train.train_recap \
     --policy.type=recap_pi \
     --policy.diffusion_repo_id=lerobot/pi05_libero_finetuned_quantiles \
     --batch_size=32 \
-    --eval.batch_size=1 \
-    --eval.n_episodes=1 \
     --steps=1000000 \
-    --save_freq=10000 \
-    --eval_freq=10000 \
+    --save_freq=500 \
+    --eval_freq=100000 \
     --wandb.enable=true \
-    --wandb.project=lerobot_iql_libero_offline_rl
+    --wandb.project=lerobot_recap
