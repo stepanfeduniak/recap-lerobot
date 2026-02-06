@@ -125,10 +125,8 @@ class RLObjects:
                 )
             
             # Get horizon from config with sensible defaults
-            horizon = getattr(self.cfg, "horizon", 10)
-            if hasattr(self.cfg, "policy") and (hasattr(self.cfg.policy, "chunk_size") or hasattr(self.cfg.policy, "horizon")):
-                horizon = getattr(self.cfg.policy, "chunk_size", getattr(self.cfg.policy, "horizon", horizon))
-            
+            horizon = getattr(self.cfg.policy, "horizon", getattr(self.cfg.policy, "chunk_size", 10))
+            print("[RL_OBJECTS] horizon", horizon)
             from lerobot_policy_recap.reinforcement_loop.common.buffers.offline_buffer import OfflineReplayBuffer
             logging.info(f"Initializing OfflineReplayBuffer with horizon={horizon}...")
             self._offline_buffer = OfflineReplayBuffer(

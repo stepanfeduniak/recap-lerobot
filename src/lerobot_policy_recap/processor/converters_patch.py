@@ -43,8 +43,9 @@ def _extract_complementary_data_patched(batch: dict[str, Any]) -> dict[str, Any]
     index_key = {"index": batch["index"]} if "index" in batch else {}
     task_index_key = {"task_index": batch["task_index"]} if "task_index" in batch else {}
     return_to_go_key = {"return_to_go": batch["return_to_go"]} if "return_to_go" in batch else {}
+    improvement_indicator_key = {"improvement_indicator": batch["improvement_indicator"]} if "improvement_indicator" in batch else {}
 
-    return {**pad_keys, **task_key, **index_key, **task_index_key, **return_to_go_key}
+    return {**pad_keys, **task_key, **index_key, **task_index_key, **return_to_go_key, **improvement_indicator_key}
 
 
 def apply_patch():

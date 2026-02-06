@@ -4,8 +4,8 @@ python -m lerobot_policy_recap.reinforcement_loop.builds.train.train_recap \
     --dataset.repo_id=/home/ubuntu/lerobot_manufex/datasets/towel_red_sparse_rewards_fast \
     --policy.type=recap_pi \
     --policy.diffusion_repo_id=/home/ubuntu/train_pi/lerobot/outputs/pi05_training_towel/checkpoints/020000/pretrained_model \
-    --policy.training_mode=critic \
-    --batch_size=32 \
+    --policy.training_mode=actor \
+    --batch_size=64 \
     --steps=1000000 \
     --save_freq=2000 \
     --eval_freq=100000 \

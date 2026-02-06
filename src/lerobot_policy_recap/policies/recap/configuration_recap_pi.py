@@ -53,12 +53,12 @@ class RECAP_PI_Config(PreTrainedConfig):
     policy_update_freq: int = 1 # Unused
 
     # Discount factor
-    discount: float = 0.99
+    discount: float = 1.0
     # Number of v_critics in the ensemble
     num_v_critics: int = 1
     # Learning rates
-    v_critic_lr: float = 3e-4
-    actor_lr: float = 3e-4
+    v_critic_lr: float = 3e-5
+    actor_lr: float = 3e-5
     # Gradient clipping norm
     grad_clip_norm: float = 10.0
 
